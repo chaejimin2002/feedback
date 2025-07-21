@@ -6,9 +6,18 @@ from jinja2 import Template
 from openai import OpenAI
 
 
+'''
+DB schema
+ID PRIMARY_KEY INTEGER AUTO_INCREMENT,
+PATH VARCHAR(255) NOT NULL,
+VALUE VARCHAR(255) NOT NULL
+UNIQUE(PATH, VALUE)
+'''
+
 # 전체 데이터 로드 : 피드백 입력값을 대치한 dict 저장
 data = {}
 
+# 임시 sample data 로드 : json형식으로 임시 작성
 sample_data = {}
 
 path_daily = set(["daily/lessonInfo/수업/수업_난이도/상", "daily/lessonInfo/수업/수업_난이도/중상", "daily/lessonInfo/수업/수업_난이도/중",  
@@ -83,13 +92,13 @@ path_weekly = set([
     "weekly/studentInfos/studentInfo/학생_피드백/수업_성취도_단/영어/말하기_능력", "weekly/studentInfos/studentInfo/학생_피드백/수업_성취도_단/영어/쓰기_능력", "weekly/studentInfos/studentInfo/학생_피드백/수업_성취도_단/영어/선지_판단",
     "weekly/studentInfos/studentInfo/학생_피드백/수업_성취도_단/영어/시간_활용", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/학생_상태/전반적_양호", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/학생_상태/성실함",
     "weekly/studentInfos/studentInfo/학생_피드백/특이사항/학생_상태/자기주도적_성격", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/학생_상태/성실함", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/학생_상태/컨디션_저하",
-    "weekly/studentInfos/studentInfo/학생_피드백/특이사항/학생_상태/동기부여_부족", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/전반적_학습_상태/지속적_성장", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/전반적_학습_상태/성장_정체기",
+    "weekly/studentInfos/studentInfo/학생_피드백/특이사항/학생_상태/동기부여_부족", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/전반적_학습_상태/지속적_성장", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/전반적_학습_상태/성장_정체기", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/전반적_학습_상태/빠른_이해", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/전반적_학습_상태/노력_요함",
     "weekly/studentInfos/studentInfo/학생_피드백/특이사항/가정_지도사항/격려_및_응원_요청", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/가정_지도사항/동기부여_요청", "weekly/studentInfos/studentInfo/학생_피드백/특이사항/가정_지도사항/가정_지도_요청"
 ])
 
 path_monthly = set([
     "monthly/lessonInfo/수업/수업_난이도/상", "monthly/lessonInfo/수업/수업_난이도/중상", "monthly/lessonInfo/수업/수업_난이도/중", "monthly/lessonInfo/수업/수업_난이도/중하", "monthly/lessonInfo/수업/수업_난이도/하",
-    "monthly/studentInfos/studentInfo/숙제/주간_숙제_수행_정도/90~100%", "monthly/studentInfos/studentInfo/숙제/주간_숙제_수행_정도/70~90%", "monthly/studentInfos/studentInfo/숙제/주간_숙제_수행_정도/50~70%", "monthly/studentInfos/studentInfo/숙제/주간_숙제_수행_정도/50%이하", "monthly/studentInfos/studentInfo/숙제/주간_숙제_수행_정도/0%",
+    "monthly/studentInfos/studentInfo/숙제/월간_숙제_수행_정도/90~100%", "monthly/studentInfos/studentInfo/숙제/월간_숙제_수행_정도/70~90%", "monthly/studentInfos/studentInfo/숙제/월간_숙제_수행_정도/50~70%", "monthly/studentInfos/studentInfo/숙제/월간_숙제_수행_정도/50%이하", "monthly/studentInfos/studentInfo/숙제/월간_숙제_수행_정도/0%",
     "monthly/studentInfos/studentInfo/숙제/특이사항/칭찬", "monthly/studentInfos/studentInfo/숙제/특이사항/향상권고", "monthly/studentInfos/studentInfo/숙제/특이사항/지난주대비향상", "monthly/studentInfos/studentInfo/숙제/특이사항/지난주대비저하", "monthly/studentInfos/studentInfo/숙제/특이사항/복습권장",
     "monthly/studentInfos/studentInfo/누적_테스트/성취도/상", "monthly/studentInfos/studentInfo/누적_테스트/성취도/중상", "monthly/studentInfos/studentInfo/누적_테스트/성취도/중", "monthly/studentInfos/studentInfo/누적_테스트/성취도/중하", "monthly/studentInfos/studentInfo/누적_테스트/성취도/하",
     "monthly/studentInfos/studentInfo/누적_테스트/특이사항/칭찬", "monthly/studentInfos/studentInfo/누적_테스트/특이사항/성적향상", "monthly/studentInfos/studentInfo/누적_테스트/특이사항/성적하락", "monthly/studentInfos/studentInfo/누적_테스트/특이사항/복습권장",
@@ -147,7 +156,8 @@ def deep_merge(base: dict, override: dict) -> dict:
 
     return out
 
-def set_replace_dict(origin_dict : dict,path : list, value : str):
+
+def set_replace_dict(origin_dict : dict, path : list, value : str):
     # dict 값 변경 함수 (피드백 중심 정보 대치)
     if isinstance(origin_dict, list):
 
@@ -194,6 +204,7 @@ def rec_explore_dict(example_dict : dict, key : str, content: str, processed_key
                 idx = random.randint(0, len(sample_data[path])-1)
                 set_replace_dict(data, path.split("/")[1:], sample_data[path][idx])
 
+
 def load_from_json_file(filename):
 
     try:
@@ -204,6 +215,7 @@ def load_from_json_file(filename):
     except Exception as e:
 
         print(f"{filename} 파일 내용을 읽어오는 중에 오류가 발생했습니다:\n{e}")
+
 
 def ask_openai(system_prompt: str, user_prompt: str, model="ax4", temperature=0.6):
     
@@ -219,6 +231,7 @@ def ask_openai(system_prompt: str, user_prompt: str, model="ax4", temperature=0.
     )
 
     return resp.choices[0].message.content.strip()
+
 
 # --------------- 1. 맞춤 정보 --------------- #
 class CustomInfo(BaseModel):
@@ -341,14 +354,6 @@ class InputPayload(BaseModel):
     studentInfos: Optional[List[StudentInfos]] = None
     model_config = {"populate_by_name": True}
 
-# information_item = set([
-#     #TODO : 개별 정보를 처리하기 전 merge된 dict에 대해 경로 처리 필요
-#     "lessonInfo/수업/수업_난이도", "studentInfos/studentInfo/숙제/지난_숙제_수행/수행_정도", "studentInfos/studentInfo/숙제/지난_숙제_수행/특이사항", "studentInfos/studentInfo/숙제/주간_숙제_수행_정도", "studentInfos/studentInfo/숙제/월간_숙제_수행_정도", "studentInfos/studentInf/숙제/특이사항",
-#     "studentInfos/studentInfo/누적_테스트/성취도", "studentInfos/studentInfo/누적_테스트/특이사항", "studentInfos/studentInfo/테스트/성취도", "studentInfos/studentInfo/테스트/특이사항", "studentInfos/studentInfo/학생_피드백/출결", "studentInfos/studentInfo/학생_피드백/수업_이해도", "studentInfos/studentInfo/학생_피드백/수업_참여도", "studentInfos/studentInfo/수업_태도",
-#     "studentInfos/studentInfo/학생_피드백/수업_성취도_장/수학", "studentInfos/studentInfo/학생_피드백/수업_성취도_장/국어", "studentInfos/studentInfo/학생_피드백/수업_성취도_장/영어",
-#     "studentInfos/studentInfo/학생_피드백/수업_성취도_단/수학", "studentInfos/studentInfo/학생_피드백/수업_성취도_단/국어", "studentInfos/studentInfo/학생_피드백/수업_성취도_단/영어",
-#     "studentInfos/studentInfo/학생_피드백/특이사항/학생상태", "studentInfos/studentInfo/학생_피드백/특이사항/전반적_학습_상태", "studentInfos/studentInfo/학생_피드백/특이사항/가정_지도사항"
-# ])
 
 SYSTEM_PROMPT = Template(textwrap.dedent("""
 당신은 학원 강사로서 중·고등학생에 대한 {{format}}을 학부모님께 전달합니다.
@@ -414,7 +419,7 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
 {% endif -%}
 {% if homework.get("특이사항") -%}
 {% for t in homework.get("특이사항") -%}
-    - {{t}}
+    - {{t[1]}}
 {% endfor -%}
 {% endif -%}
 {% endif %}
@@ -470,7 +475,7 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
     - 특이사항 : {{test.get(t).특이사항 | join(", ")}}
 {% endif -%}
 {% endfor -%}
-{% endif %}
+{% endif %} 
 {% if cumulative_test -%}
 [누적 테스트]
 {% if cumulative_test.get("미니_테스트") -%}
@@ -544,7 +549,7 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
 {% if stu_fd.get("특이사항") -%}
     - 특이사항
 {% if stu_fd.get("특이사항").get("학생상태") -%}
-        - 학생상태 : {{stu_fd.특이사항.학생상태 | join(", ")}}
+        - 학생상태 : {{stu_fd.특이사항.학생상태| join(", ")}}
 {% endif -%}
 {% if stu_fd.get("특이사항").get("전반적_학습_상태") -%}
         - 전반적 학습 상태 : {{stu_fd.특이사항.전반적_학습_상태 | join(", ")}}
@@ -557,8 +562,6 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
 {% endif -%}
 {% endif -%}
 {% endif %}
-
-
 
 요구사항
 0) {{name}} 학생 이름을 자연스럽게 추가합니다. 이때, 학생의 성(lastname)은 생략하고, 이름(first name)만 사용합니다. 예: 오늘도 주원이는, 주원이가, 주원 학생은, 주원이와,... / 안녕하세요~ 오늘 진아는, 진아가, 진아 학생이, 진아와, ...
@@ -643,18 +646,17 @@ INFO_PROMPT_TMPL = Template(textwrap.dedent("""
 0) {{name}} 학생 이름을 자연스럽게 추가합니다. 이때, 학생의 성(lastname)은 생략하고, 이름(first name)만 사용합니다. 예: 오늘도 주원이는, 주원이가, 주원 학생은, 주원이와,... / 안녕하세요~ 오늘 진아는, 진아가, 진아 학생이, 진아와, ...
 1) 입력된 피드백을 종합하여 하나의 피드백 메세지로 구성. 이때 최대한 위 내용을 참고하여 빠지는 내용없이 작성(중속되거나 상충되는 내용은 생략하며, 큰 내용의 틀을 벗어나지 않도롭 합니다.)
 2) 숙제는 범주구분을 명확히 해주세요. 지난 숙제에 대한 피드백과 이번숙제에 대한 정보가 모두 있는 경우 두 범주로 나누어 작성합니다.
+3) 인사는 생략해줘.
 """))
+
 
 INFO_TMPL = Template(textwrap.dedent("""
 안녕하세요. {{name}} 학생의 {{format}} 입니다.
 
 {% set idx = 0 -%}
-{% if attendance -%}
+{% if attendance.get("정상_출석_일수") or attendance.get("이상_출석_일수") or attendance.get("이상_출석_사유") -%}
 {% set idx = idx + 1 -%}
 {{idx}}. 출결 현황
-{% if attendance.get("출결") -%}
-    - {{attendance.출결}}
-{% endif -%}
 {% if attendance.get("정상_출석_일수") -%}
     - 정상 출석 일수 : {{attendance.정상_출석_일수}}
 {% endif -%}
@@ -857,12 +859,9 @@ def main():
                 stu_fd = merged.get("학생_피드백")
             )
 
-            # feedback = ask_openai(system_prompt, user_prompt, args.model, 0.6)
-
-            feedback = "test"
+            feedback = ask_openai(system_prompt, user_prompt, args.model, 0.6)
 
             #정보 중심 입력값 + 피드백 중심 입력값 통합 템플릿 처리   cf) 학생_피드백에 출결 정보 존재
-
             message = INFO_TMPL.render(
                 format = customInfo["피드백_형식"],
                 tone = customInfo["말투"],
