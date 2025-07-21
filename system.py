@@ -171,8 +171,10 @@ def set_replace_dict(origin_dict : dict, path : list, value : str):
 
         if len(path) == 2:
             
-            origin_dict[key] = value
-
+            origin_dict[key] = {path[1] : value}
+            print(origin_dict[key])
+            return
+        print(path)
         set_replace_dict(origin_dict[key], path[1:], value)
 
 
@@ -197,12 +199,19 @@ def rec_explore_dict(example_dict : dict, key : str, content: str, processed_key
 
             path = content + "/" + example_dict[key]
 
-            if path in processed_keys: 
+            road = path.split("/")
 
-                global sample_data
+            if road[3] == "테스트":
+                road.pop(4)
 
-                idx = random.randint(0, len(sample_data[path])-1)
-                set_replace_dict(data, path.split("/")[1:], sample_data[path][idx])
+            road = "/".join(road)
+
+            if road in processed_keys: 
+
+                global sample_datas
+
+                idx = random.randint(0, len(sample_data[road])-1)
+                set_replace_dict(data, path.split("/")[1:], sample_data[road][idx])
 
 
 def load_from_json_file(filename):
@@ -230,8 +239,8 @@ def ask_openai(system_prompt: str, user_prompt: str, model="ax4", temperature=0.
         ]
     )
 
-    return resp.choices[0].message.content.strip()
-
+    # return resp.choices[0].message.content.strip()
+    return resp
 
 # --------------- 1. 맞춤 정보 --------------- #
 class CustomInfo(BaseModel):
@@ -246,7 +255,7 @@ class Lesson(BaseModel):
     수업_주차: Optional[str] = Field(None, alias="수업_주차")
     수업_단원: Optional[str] = Field(None, alias="수업_단원")
     수업_내용: Optional[str] = Field(None, alias="수업_내용")
-    수업_난이도: Optional[str] = Field(None, alias="수업_난이도")
+    수업_난이도: Optional[Dict[str, str]] = Field(None, alias="수업_난이도")
     진도_조정_여부: Optional[str] = Field(None, alias="진도_조정_여부")
     다음_주_예고: Optional[str] = Field(None, alias="다음_주_예고")
     다음_달_예고: Optional[str] = Field(None, alias="다음_달_예고")
@@ -286,50 +295,50 @@ class LessonInfo(BaseModel):
 # --------------- 3. 학생 정보 --------------- #
 class HomeworkTask(BaseModel):
     숙제명: Optional[str] = Field(None, alias="숙제명")
-    수행_정도: Optional[str] = Field(None, alias="수행_정도")
+    수행_정도: Optional[Dict[str, str]] = Field(None, alias="수행_정도")
     model_config = {"populate_by_name": True}
 
 class PersonalCumulativeTest(BaseModel):
-    성취도: Optional[str] = None
-    특이사항: Optional[List[str]] = Field(None, alias="특이사항")
+    성취도: Optional[Dict[str, str]] = None
+    특이사항: Optional[List[Dict[str, str]]] = Field(None, alias="특이사항")
     model_config = {"populate_by_name": True}
 
 class PersonalTest(BaseModel):
     테스트_내용: Optional[str] = Field(None, alias="테스트_내용")
     획득_점수: Optional[str] = Field(None, alias="획득_점수")
-    성취도: Optional[str] = None
+    성취도: Optional[Dict[str, str]] = None
     통과_여부: Optional[str] = Field(None, alias="통과_여부")
     석차: Optional[int] = None
-    특이사항: Optional[List[str]] = Field(None, alias="특이사항")
+    특이사항: Optional[List[Dict[str, str]]] = Field(None, alias="특이사항")
     model_config = {"populate_by_name": True}
 
 class PersonalHomework(BaseModel):
     지난_숙제_수행: Optional[List[HomeworkTask]] = Field(None, alias="지난_숙제_수행")
-    주간_숙제_수행_정도: Optional[str] = Field(None, alias="주간_숙제_수행_정도")
-    월간_숙제_수행_정도: Optional[str] = Field(None, alias="월간_숙제_수행_정도")
-    특이사항: Optional[List[str]] = Field(None, alias="특이사항")
+    주간_숙제_수행_정도: Optional[Dict[str, str]] = Field(None, alias="주간_숙제_수행_정도")
+    월간_숙제_수행_정도: Optional[Dict[str, str]] = Field(None, alias="월간_숙제_수행_정도")
+    특이사항: Optional[List[Dict[str, str]]] = Field(None, alias="특이사항")
     model_config = {"populate_by_name": True}
 
 class SubjectAchievement(BaseModel):
-    수학: Optional[str] = None
-    국어: Optional[str] = None
-    영어: Optional[str] = None
+    수학: Optional[Dict[str, str]] = None
+    국어: Optional[Dict[str, str]] = None
+    영어: Optional[Dict[str, str]] = None
     model_config = {"populate_by_name": True}
 
 class PersonalFeedbackDetail(BaseModel):
-    학생_상태: Optional[List[str]] = Field(None, alias="학생_상태")
-    전반적_학습_상태: Optional[List[str]] = Field(None, alias="전반적_학습_상태")
-    가정_지도사항: Optional[List[str]] = Field(None, alias="가정_지도사항")
+    학생_상태: Optional[List[Dict[str, str]]] = Field(None, alias="학생_상태")
+    전반적_학습_상태: Optional[List[Dict[str, str]]] = Field(None, alias="전반적_학습_상태")
+    가정_지도사항: Optional[List[Dict[str, str]]] = Field(None, alias="가정_지도사항")
     model_config = {"populate_by_name": True}
 
 class PersonalFeedback(BaseModel):
-    출결: Optional[str] = Field(None, alias="출결")
+    출결: Optional[Dict[str, str]] = Field(None, alias="출결")
     정상_출석_일수: Optional[int] = Field(None, alias="정상_출석_일수")
     이상_출석_일수: Optional[int] = Field(None, alias="이상_출석_일수")
     이상_출석_사유: Optional[str] = Field(None, alias="이상_출석_사유")
-    수업_이해도: Optional[str] = Field(None, alias="수업_이해도")
-    수업_참여도: Optional[str] = Field(None, alias="수업_참여도")
-    수업_태도: Optional[str] = Field(None, alias="수업_태도")
+    수업_이해도: Optional[Dict[str, str]] = Field(None, alias="수업_이해도")
+    수업_참여도: Optional[Dict[str, str]] = Field(None, alias="수업_참여도")
+    수업_태도: Optional[Dict[str, str]] = Field(None, alias="수업_태도")
     수업_성취도_장: Optional[SubjectAchievement] = Field(None, alias="수업_성취도_장")
     수업_성취도_단: Optional[SubjectAchievement] = Field(None, alias="수업_성취도_단")
     특이사항: Optional[PersonalFeedbackDetail] = Field(None, alias="특이사항")
@@ -566,7 +575,6 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
 요구사항
 0) {{name}} 학생 이름을 자연스럽게 추가합니다. 이때, 학생의 성(lastname)은 생략하고, 이름(first name)만 사용합니다. 예: 오늘도 주원이는, 주원이가, 주원 학생은, 주원이와,... / 안녕하세요~ 오늘 진아는, 진아가, 진아 학생이, 진아와, ...
 1) 입력된 피드백을 종합하여 하나의 피드백 메세지로 구성. 이때 최대한 위 내용을 참고하여 빠지는 내용없이 작성(중속되거나 상충되는 내용은 생략하며, 큰 내용의 틀을 벗어나지 않도롭 합니다.)
-2) 숙제는 범주구분을 명확히 해주세요. 지난 숙제에 대한 피드백과 이번숙제에 대한 정보가 모두 있는 경우 두 범주로 나누어 작성합니다.
 """))
 
 INFO_PROMPT_TMPL = Template(textwrap.dedent("""
@@ -575,7 +583,7 @@ INFO_PROMPT_TMPL = Template(textwrap.dedent("""
 {% if lesson -%}
 [수업]
 {% if lesson.get("수업_난이도") -%}
-    - {{ lesson.수업_난이도 }}
+    - {{ lesson.수업_난이도.get() }}
 {% endif -%}
 {% endif %}
 {% if cumulative_test -%}
