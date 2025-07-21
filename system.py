@@ -170,11 +170,12 @@ def set_replace_dict(origin_dict : dict, path : list, value : str):
         key = path[0]
 
         if len(path) == 2:
-            
-            origin_dict[key] = {path[1] : value}
-            print(origin_dict[key])
+
+            if key not in origin_dict or not isinstance(origin_dict[key], dict):
+                origin_dict[key] = {path[1] : value}
+            else:
+                origin_dict[key][path[1]] = value
             return
-        print(path)
         set_replace_dict(origin_dict[key], path[1:], value)
 
 
@@ -190,8 +191,26 @@ def rec_explore_dict(example_dict : dict, key : str, content: str, processed_key
     elif isinstance(example_dict[key], list):
 
         for i in example_dict[key]:
-            for j in list(i.keys()):
-                rec_explore_dict(i, j, content+"/"+j, processed_keys)
+            if isinstance(i, str):
+
+                path = content + "/" + i
+
+                road = path.split("/")
+
+                if road[3] == "테스트":
+                    road.pop(4)
+
+                road = "/".join(road)
+
+                if road in processed_keys: 
+
+                    global sample_datas
+
+                    idx = random.randint(0, len(sample_data[road])-1)
+                    set_replace_dict(data, path.split("/")[1:], sample_data[road][idx])
+            else:
+                for j in list(i.keys()):
+                    rec_explore_dict(i, j, content+"/"+j, processed_keys)
 
     else:
 
@@ -239,8 +258,7 @@ def ask_openai(system_prompt: str, user_prompt: str, model="ax4", temperature=0.
         ]
     )
 
-    # return resp.choices[0].message.content.strip()
-    return resp
+    return resp.choices[0].message.content.strip()
 
 # --------------- 1. 맞춤 정보 --------------- #
 class CustomInfo(BaseModel):
@@ -300,7 +318,7 @@ class HomeworkTask(BaseModel):
 
 class PersonalCumulativeTest(BaseModel):
     성취도: Optional[Dict[str, str]] = None
-    특이사항: Optional[List[Dict[str, str]]] = Field(None, alias="특이사항")
+    특이사항: Optional[Dict[str, str]] = Field(None, alias="특이사항")
     model_config = {"populate_by_name": True}
 
 class PersonalTest(BaseModel):
@@ -309,7 +327,7 @@ class PersonalTest(BaseModel):
     성취도: Optional[Dict[str, str]] = None
     통과_여부: Optional[str] = Field(None, alias="통과_여부")
     석차: Optional[int] = None
-    특이사항: Optional[List[Dict[str, str]]] = Field(None, alias="특이사항")
+    특이사항: Optional[Dict[str, str]] = Field(None, alias="특이사항")
     model_config = {"populate_by_name": True}
 
 class PersonalHomework(BaseModel):
@@ -326,9 +344,9 @@ class SubjectAchievement(BaseModel):
     model_config = {"populate_by_name": True}
 
 class PersonalFeedbackDetail(BaseModel):
-    학생_상태: Optional[List[Dict[str, str]]] = Field(None, alias="학생_상태")
-    전반적_학습_상태: Optional[List[Dict[str, str]]] = Field(None, alias="전반적_학습_상태")
-    가정_지도사항: Optional[List[Dict[str, str]]] = Field(None, alias="가정_지도사항")
+    학생_상태: Optional[Dict[str, str]] = Field(None, alias="학생_상태")
+    전반적_학습_상태: Optional[Dict[str, str]] = Field(None, alias="전반적_학습_상태")
+    가정_지도사항: Optional[Dict[str, str]] = Field(None, alias="가정_지도사항")
     model_config = {"populate_by_name": True}
 
 class PersonalFeedback(BaseModel):
@@ -398,7 +416,7 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
     - 내용 : {{ lesson.수업_내용 }}
 {% endif -%}
 {% if lesson.get("수업_난이도") -%}
-    - {{ lesson.수업_난이도 }}
+    - {{ lesson.수업_난이도.values() | join("") }}
 {% endif -%}
 {% if lesson.get("진도_조정_여부") -%}
     - 진도 조정 여부 : {{ lesson.진도_조정_여부 }}
@@ -417,18 +435,18 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
     - 숙제명 : {{h.get("숙제명")}}
     {% endif -%}
     {% if h.get("수행_정도") -%}
-    - 수행 정도 : {{h.get("수행_정도")}}
+    - 수행 정도 : {{h.get("수행_정도").values() | join("")}}
     {% endif -%}
 {% endfor -%}
 {% if homework.get("주간_숙제_수행_정도") -%}
-    - 주간 숙제 수행 정도 : {{ homework.주간_숙제_수행_정도 }}
+    - 주간 숙제 수행 정도 : {{ homework.주간_숙제_수행_정도.values() | join("") }}
 {% endif -%}
 {% if homework.get("월간_숙제_수행_정도") -%}
-    - 월간 숙제 수행 정도 : {{ homework.월간_숙제_수행_정도 }}
+    - 월간 숙제 수행 정도 : {{ homework.월간_숙제_수행_정도.values() | join("") }}
 {% endif -%}
 {% if homework.get("특이사항") -%}
 {% for t in homework.get("특이사항") -%}
-    - {{t[1]}}
+    - {{t.values() | join(",")}}
 {% endfor -%}
 {% endif -%}
 {% endif %}
@@ -472,7 +490,7 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
     - 획득 점수 : {{test.get(t).획득_점수}}
 {% endif -%}
 {% if test.get(t).get("성취도") -%}
-    - 성취도 : {{test.get(t).성취도}}
+    - {{test.get(t).성취도.values() | join("")}}
 {% endif -%}
 {% if test.get(t).get("통과_여부") -%}
     - 통과 여부 : {{test.get(t).통과_여부}}
@@ -481,7 +499,7 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
     - 석차 : {{test.get(t).석차}}
 {% endif -%}
 {% if test.get(t).get("특이사항") -%}
-    - 특이사항 : {{test.get(t).특이사항 | join(", ")}}
+    - 특이사항 : {{test.get(t).특이사항.values() | join(", ")}}
 {% endif -%}
 {% endfor -%}
 {% endif %} 
@@ -500,18 +518,18 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
     - 단원 테스트 : {{cumulative_test.직접_입력}}
 {% endif -%}
 {% if cumulative_test.get("성취도") -%}
-    - {{cumulative_test.get("성취도")}}
+    - {{cumulative_test.get("성취도").values() | join("")}}
 {% endif -%}
 {% if cumulative_test.get("특이사항") -%}
     {% for i in cumulative_test.get("특이사항") -%}
-    - {{i}}
+    - {{i.values() | join(",")}}
     {% endfor -%}
 {% endif -%}
 {% endif %}
 {% if stu_fd -%}
 [학생 피드백]
 {% if stu_fd.get("출결") -%}
-    - 출결 : {{stu_fd.get("출결")}}
+    - 출결 : {{stu_fd.get("출결").values() | join("")}}
 {% endif -%}
 {% if stu_fd.get("정상_출석_일수") -%}
     - 정상 출석 일수 : {{stu_fd.정상_출석_일수}}
@@ -523,48 +541,48 @@ LETTER_PROMPT_TMPL = Template(textwrap.dedent("""
     - 이상 출석 사유 : {{stu_fd.이상_출석_사유}}
 {% endif -%}
 {% if stu_fd.get("수업_이해도") -%}
-    - 수업 이해도 : {{stu_fd.수업_이해도}}
+    - 수업 이해도 : {{stu_fd.수업_이해도.values() | join("")}}
 {% endif -%}
 {% if stu_fd.get("수업_참여도") -%}
-    - 수업 참여도 : {{stu_fd.수업_참여도}}
+    - 수업 참여도 : {{stu_fd.수업_참여도.values() | join("")}}
 {% endif -%}
 {% if stu_fd.get("수업_태도") -%}
-    - 수업 태도 : {{stu_fd.수업_태도}}
+    - 수업 태도 : {{stu_fd.수업_태도.values() | join("")}}
 {% endif -%}
 {% if stu_fd.get("수업_성취도_장") -%}
     - 수업 성취도 장
 {% if stu_fd.수업_성취도_장.get("수학") -%}
-        - 수학 : {{stu_fd.수업_성취도_장.수학}}
+        - 수학 : {{stu_fd.수업_성취도_장.수학.values() | join("")}}
 {% endif -%}
 {% if stu_fd.수업_성취도_장.get("국어") -%}
-        - 국어 : {{stu_fd.수업_성취도_장.국어}}
+        - 국어 : {{stu_fd.수업_성취도_장.국어.values() | join("")}}
 {% endif -%}
 {% if stu_fd.수업_성취도_장.get("영어") -%}
-        - 영어 : {{stu_fd.수업_성취도_장.영어}}
+        - 영어 : {{stu_fd.수업_성취도_장.영어.values() | join("")}}
 {% endif -%}
 {% endif -%}
 {% if stu_fd.get("수업_성취도_단") -%}
     - 수업 성취도 단
 {% if stu_fd.수업_성취도_단.get("수학") -%}
-        - 수학 : {{stu_fd.수업_성취도_단.수학}}
+        - 수학 : {{stu_fd.수업_성취도_단.수학.values() | join("")}}
 {% endif -%}
 {% if stu_fd.수업_성취도_단.get("국어") -%}
-        - 국어 : {{stu_fd.수업_성취도_단.국어}}
+        - 국어 : {{stu_fd.수업_성취도_단.국어.values() | join("")}}
 {% endif -%}
 {% if stu_fd.수업_성취도_단.get("영어") -%}
-        - 영어 : {{stu_fd.수업_성취도_단.영어}}
+        - 영어 : {{stu_fd.수업_성취도_단.영어.values() | join("")}}
 {% endif -%}
 {% endif -%}
 {% if stu_fd.get("특이사항") -%}
     - 특이사항
 {% if stu_fd.get("특이사항").get("학생상태") -%}
-        - 학생상태 : {{stu_fd.특이사항.학생상태| join(", ")}}
+        - 학생상태 : {{stu_fd.특이사항.학생상태.values() | join(", ")}}
 {% endif -%}
 {% if stu_fd.get("특이사항").get("전반적_학습_상태") -%}
-        - 전반적 학습 상태 : {{stu_fd.특이사항.전반적_학습_상태 | join(", ")}}
+        - 전반적 학습 상태 : {{stu_fd.특이사항.전반적_학습_상태.values() | join(", ")}}
 {% endif -%}
 {% if stu_fd.get("특이사항").get("가정_지도사항") -%}
-        - 가정 지도사항 : {{stu_fd.특이사항.가정_지도사항 | join(", ")}}
+        - 가정 지도사항 : {{stu_fd.특이사항.가정_지도사항.values() | join(", ")}}
 {% endif -%}
 {% if stu_fd.get("특이사항").get("직접입력") -%}
         - 직접 입력 : {{stu_fd.특이사항.직접입력}}
@@ -583,68 +601,82 @@ INFO_PROMPT_TMPL = Template(textwrap.dedent("""
 {% if lesson -%}
 [수업]
 {% if lesson.get("수업_난이도") -%}
-    - {{ lesson.수업_난이도.get() }}
+    - {{ lesson.수업_난이도.values() | join("") }}
 {% endif -%}
 {% endif %}
-{% if cumulative_test -%}
+{% if cumulative_test.get("성취도") or cumulative_test.get("특이사항") -%}
 [누적 테스트]
 {% if cumulative_test.get("성취도") -%}
-    - {{cumulative_test.get("성취도")}}
+    - {{cumulative_test.get("성취도").values() | join("")}}
 {% endif -%}
 {% if cumulative_test.get("특이사항") -%}
     {% for i in cumulative_test.get("특이사항") -%}
-    - {{i}}
+    - {{i.value() | join("")}}
     {% endfor -%}
 {% endif -%}
+{% endif -%}
+{% if test -%}
+[테스트]
+{% for t in test.keys() -%}
+{% if test.get(t).get("테스트_내용") -%}
+    - {{test.get(t).get("테스트_내용")}}
+{% endif -%}
+{% if test.get(t).get("성취도") -%}
+    - {{test.get(t).get("성취도").values() | join("")}}
+{% endif -%}
+{% if test.get(t).get("특이사항") -%}
+    - {{test.get(t).get("특이사항").values() | join("")}}
+{% endif -%}
+{% endfor -%}
 {% endif -%}
 {% if stu_fd -%}
 [학생 피드백]
 {% if stu_fd.get("출결") -%}
-    - 출결 : {{stu_fd.get("출결")}}
+    - 출결 : {{stu_fd.get("출결").values() | join("")}}
 {% endif -%}
 {% if stu_fd.get("수업_이해도") -%}
-    - {{stu_fd.get("수업_이해도")}}
+    - {{stu_fd.get("수업_이해도").values() | join("")}}
 {% endif -%}
 {% if stu_fd.get("수업_참여도") -%}
-    - {{stu_fd.get("수업_참여도")}}
+    - {{stu_fd.get("수업_참여도").values() | join("")}}
 {% endif -%}
 {% if stu_fd.get("수업_태도") -%}
-    - 수업 태도 : {{stu_fd.get("수업_태도")}}
+    - {{stu_fd.get("수업_태도").values() | join("")}}
 {% endif -%}
 {% if stu_fd.get("수업_성취도_장") -%}
     - 수업 성취도 장
     {% if stu_fd.get("수업_성취도_장").get("수학") -%}
-        - 수학 : {{stu_fd.get("수업_성취도_장").get("수학")}}
+        - 수학 : {{stu_fd.get("수업_성취도_장").get("수학").values() | join("")}}
     {% endif -%}
     {% if stu_fd.get("수업_성취도_장").get("국어") -%}
-        - 국어 : {{stu_fd.get("수업_성취도_장").get("국어")}}
+        - 국어 : {{stu_fd.get("수업_성취도_장").get("국어").values() | join("")}}
     {% endif -%}
     {% if stu_fd.get("수업_성취도_장").get("영어") -%}
-        - 영어 : {{stu_fd.get("수업_성취도_장").get("영어")}}
+        - 영어 : {{stu_fd.get("수업_성취도_장").get("영어").values() | join("")}}
     {% endif -%}
 {% endif -%}
 {% if stu_fd.get("수업_성취도_단") -%}
     - 수업 성취도 단
     {% if stu_fd.get("수업_성취도_단").get("수학") -%}
-        - 수학 : {{stu_fd.get("수업_성취도_단").get("수학")}}
+        - 수학 : {{stu_fd.get("수업_성취도_단").get("수학").values() | join("")}}
     {% endif -%}
     {% if stu_fd.get("수업_성취도_단").get("국어") -%}
-        - 국어 : {{stu_fd.get("수업_성취도_단").get("국어")}}
+        - 국어 : {{stu_fd.get("수업_성취도_단").get("국어").values() | join("")}}
     {% endif -%}
     {% if stu_fd.get("수업_성취도_단").get("영어") -%}
-        - 영어 : {{stu_fd.get("수업_성취도_단").get("영어")}}
+        - 영어 : {{stu_fd.get("수업_성취도_단").get("영어").values() | join("")}}
     {% endif -%}
 {% endif -%}
 {% if stu_fd.get("특이사항") -%}
     - 특이사항
-    {% if stu_fd.get("특이사항").get("학생상태") -%}
-        - 학생상태 : {{stu_fd.get("특이사항").get("학생상태")}}
+    {% if stu_fd.get("특이사항").get("학생_상태") -%}
+        - 학생상태 : {{stu_fd.get("특이사항").get("학생_상태").values() | join(", ")}}
     {% endif -%}
     {% if stu_fd.get("특이사항").get("전반적_학습_상태") -%}
-        - 전반적 학습 상태 : {{stu_fd.get("특이사항").get("전반적_학습_상태")}}
+        - 전반적 학습 상태 : {{stu_fd.get("특이사항").get("전반적_학습_상태").values() | join(", ")}}
     {% endif -%}
     {% if stu_fd.get("특이사항").get("가정_지도사항") -%}
-        - 가정 지도사항 : {{stu_fd.get("특이사항").get("가정_지도사항")}}
+        - 가정 지도사항 : {{stu_fd.get("특이사항").get("가정_지도사항").values() | join(", ")}}
     {% endif -%}
 {% endif -%}
 {% endif %}
@@ -652,7 +684,7 @@ INFO_PROMPT_TMPL = Template(textwrap.dedent("""
 
 요구사항
 0) {{name}} 학생 이름을 자연스럽게 추가합니다. 이때, 학생의 성(lastname)은 생략하고, 이름(first name)만 사용합니다. 예: 오늘도 주원이는, 주원이가, 주원 학생은, 주원이와,... / 안녕하세요~ 오늘 진아는, 진아가, 진아 학생이, 진아와, ...
-1) 입력된 피드백을 종합하여 하나의 피드백 메세지로 구성. 이때 최대한 위 내용을 참고하여 빠지는 내용없이 작성(중속되거나 상충되는 내용은 생략하며, 큰 내용의 틀을 벗어나지 않도롭 합니다.)
+1) 입력된 피드백을 종합하여 하나의 피드백 메세지로 구성. 이때 최대한 위 내용을 참고하여 빠지는 내용없이 작성(중속되거나 상충되는 내용은 생략하며, 작성되어 있지 않은 내용은 작성하지 않고, 큰 내용의 틀을 벗어나지 않도롭 합니다.)
 2) 숙제는 범주구분을 명확히 해주세요. 지난 숙제에 대한 피드백과 이번숙제에 대한 정보가 모두 있는 경우 두 범주로 나누어 작성합니다.
 3) 인사는 생략해줘.
 """))
@@ -662,9 +694,12 @@ INFO_TMPL = Template(textwrap.dedent("""
 안녕하세요. {{name}} 학생의 {{format}} 입니다.
 
 {% set idx = 0 -%}
-{% if attendance.get("정상_출석_일수") or attendance.get("이상_출석_일수") or attendance.get("이상_출석_사유") -%}
+{% if attendance -%}
 {% set idx = idx + 1 -%}
 {{idx}}. 출결 현황
+{% if attendance.get("출결") -%}
+    - 출결 : {{attendance.get("출결").keys() | join(", ")}}
+{% endif -%}
 {% if attendance.get("정상_출석_일수") -%}
     - 정상 출석 일수 : {{attendance.정상_출석_일수}}
 {% endif -%}
@@ -702,14 +737,14 @@ INFO_TMPL = Template(textwrap.dedent("""
 {{idx}}. 지난 숙제 안내
 {% for h in homework.get("지난_숙제_수행") -%}
     {% if h.get("숙제명") and h.get("수행_정도") -%}
-    - {{h.get("숙제명")}} : {{h.get("수행_정도")}}
+    - {{h.get("숙제명")}} : {{h.get("수행_정도").keys() | join("")}}
     {% endif -%}
 {% endfor -%}
 {% if homework.get("주간_숙제_수행_정도") -%}
-    - 주간 숙제 수행 정도 : {{ homework.주간_숙제_수행_정도 }}
+    - 주간 숙제 수행 정도 : {{ homework.주간_숙제_수행_정도.keys() | join("")}}
 {% endif -%}
 {% if homework.get("월간_숙제_수행_정도") -%}
-    - 월간 숙제 수행 정도 : {{ homework.월간_숙제_수행_정도 }}
+    - 월간 숙제 수행 정도 : {{ homework.월간_숙제_수행_정도.keys() | join("")}}
 {% endif -%}
 {% endif %}
 {% if homework.get("진도_부분_문제풀이") or homework.get("과제집_워크북") or homework.get("오답_정리") or homework.get("직접_입력") -%}
@@ -845,7 +880,7 @@ def main():
                 cumulative_test = merged.get("누적_테스트"),
                 stu_fd = merged.get("학생_피드백")
             )  
-
+            
             feedback = ask_openai(system_prompt, user_prompt, args.model, 0.6)
 
             print(feedback)
@@ -856,16 +891,19 @@ def main():
         for stu in student_infos:
             student_data = stu.model_dump(exclude_none=True)["studentInfo"]
             merged = deep_merge(lesson_info, student_data)   
+            print(merged)
             
             # 피드백 중심 입력값으로 피드백 생성
             user_prompt = INFO_PROMPT_TMPL.render(
                 tone = customInfo["말투"],
                 name = merged.get("학생_이름"),
                 homework = merged.get("숙제"),
+                lesson = merged.get("수업"),
                 test = merged.get("테스트"),
                 cumulative_test = merged.get("누적_테스트"),
                 stu_fd = merged.get("학생_피드백")
             )
+            print(user_prompt)
 
             feedback = ask_openai(system_prompt, user_prompt, args.model, 0.6)
 
@@ -881,8 +919,8 @@ def main():
                 attendance = merged.get("학생_피드백"),         
                 stu_fd = feedback
             )
-
             print(message)
+            
 
     else:
         raise ValueError("Invalid format")
